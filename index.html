@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>客戶資料管理系統</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">CRM</div>
+          <div>
+            <h1>客戶資料管理</h1>
+            <p>Google Sheet 資料庫</p>
+          </div>
+        </div>
+
+        <nav class="nav-tabs" aria-label="主要功能">
+          <button class="nav-tab active" data-view="dashboard">總覽</button>
+          <button class="nav-tab" data-view="customers">客戶</button>
+          <button class="nav-tab" data-view="orders">委刊單</button>
+          <button class="nav-tab" data-view="invoices">發票</button>
+          <button class="nav-tab" data-view="payments">入款</button>
+          <button class="nav-tab" data-view="contracts">合約</button>
+          <button class="nav-tab" data-view="activities">紀錄</button>
+          <button class="nav-tab" data-view="settings">設定</button>
+        </nav>
+
+        <div class="sync-card">
+          <span class="status-dot" id="statusDot"></span>
+          <div>
+            <strong id="syncStatus">示範資料模式</strong>
+            <p id="syncHint">貼上 Apps Script 網址即可串接 Google Sheet。</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Finance CRM</p>
+            <h2 id="viewTitle">營運總覽</h2>
+          </div>
+          <div class="topbar-actions">
+            <label class="search-box">
+              <span>搜尋</span>
+              <input id="searchInput" type="search" placeholder="客戶、統編、訂單、發票" />
+            </label>
+            <button class="primary-btn" id="refreshBtn">同步</button>
+          </div>
+        </header>
+
+        <section class="view active" id="dashboardView">
+          <div class="metric-grid">
+            <article class="metric">
+              <span>客戶數</span>
+              <strong id="metricCustomers">0</strong>
+            </article>
+            <article class="metric">
+              <span>未收款</span>
+              <strong id="metricReceivable">$0</strong>
+            </article>
+            <article class="metric">
+              <span>本月入款</span>
+              <strong id="metricMonthPaid">$0</strong>
+            </article>
+            <article class="metric">
+              <span>逾期發票</span>
+              <strong id="metricOverdue">0</strong>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>待追蹤發票</h3>
+                <button class="ghost-btn" data-open-view="invoices">查看全部</button>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>客戶</th>
+                      <th>發票</th>
+                      <th>到期日</th>
+                      <th>未收金額</th>
+                      <th>狀態</th>
+                    </tr>
+                  </thead>
+                  <tbody id="upcomingInvoiceRows"></tbody>
+                </table>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <h3>最近互動</h3>
+                <button class="ghost-btn" data-open-view="activities">新增紀錄</button>
+              </div>
+              <div class="activity-list" id="recentActivities"></div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="customersView">
+          <div class="section-toolbar">
+            <button class="primary-btn" data-modal="customerModal">新增客戶</button>
+          </div>
+          <div class="cards-grid" id="customerCards"></div>
+        </section>
+
+        <section class="view" id="ordersView">
+          <div class="section-toolbar">
+            <button class="primary-btn" data-modal="orderModal">新增委刊單</button>
+          </div>
+          <div class="panel">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>BD</th>
+                    <th>銷售類別</th>
+                    <th>代理商</th>
+                    <th>品牌客戶</th>
+                    <th>報價日期</th>
+                    <th>未稅金額</th>
+                    <th>資料形式</th>
+                    <th>資料筆數</th>
+                    <th>交付日期</th>
+                    <th>發票</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="orderRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="invoicesView">
+          <div class="section-toolbar">
+            <button class="primary-btn" data-modal="invoiceModal">新增發票</button>
+            <button class="secondary-btn" id="exportInvoicesBtn">匯出 Google Sheet</button>
+          </div>
+          <div class="panel">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>已收款</th>
+                    <th>訂單編號</th>
+                    <th>請款時程</th>
+                    <th>發票開立</th>
+                    <th>發票號碼</th>
+                    <th>公司</th>
+                    <th>統編</th>
+                    <th>金額未稅</th>
+                    <th>金額含稅</th>
+                    <th>購買商品</th>
+                    <th>狀態</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="invoiceRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="paymentsView">
+          <div class="section-toolbar">
+            <button class="primary-btn" data-modal="paymentModal">登錄入款</button>
+          </div>
+          <div class="panel">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th>
+                    <th>客戶</th>
+                    <th>對應發票</th>
+                    <th>金額</th>
+                    <th>方式</th>
+                    <th>備註</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="paymentRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="contractsView">
+          <div class="section-toolbar">
+            <button class="primary-btn" data-modal="contractModal">新增合約</button>
+          </div>
+          <div class="panel">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>類別</th>
+                    <th>公司名稱</th>
+                    <th>窗口</th>
+                    <th>主要聯繫</th>
+                    <th>客戶狀態</th>
+                    <th>合約類別</th>
+                    <th>起始日</th>
+                    <th>終止日</th>
+                    <th>含稅價格</th>
+                    <th>請款模式</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="contractRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="activitiesView">
+          <div class="section-toolbar">
+            <button class="primary-btn" data-modal="activityModal">新增互動紀錄</button>
+          </div>
+          <div class="panel">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>日期</th>
+                    <th>客戶</th>
+                    <th>類型</th>
+                    <th>內容</th>
+                    <th>下次追蹤</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="activityRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="settingsView">
+          <div class="settings-layout">
+            <section class="panel">
+              <div class="panel-head">
+                <h3>Google Sheet 串接</h3>
+              </div>
+              <form id="settingsForm" class="form-grid single">
+                <label>
+                  Apps Script Web App URL
+                  <input id="scriptUrl" type="url" placeholder="https://script.google.com/macros/s/.../exec" />
+                </label>
+                <label>
+                  資料表 ID
+                  <input id="sheetId" type="text" placeholder="貼上 Google Sheet ID" />
+                </label>
+                <div class="settings-actions">
+                  <button class="primary-btn" type="submit">儲存並測試</button>
+                  <button class="secondary-btn" type="button" id="seedBtn">寫入示範資料</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="panel">
+              <div class="panel-head">
+                <h3>工作表結構</h3>
+              </div>
+              <div class="schema-list">
+                <p><strong>Customers</strong> 客戶基本資料、統編、聯絡資訊、付款條件。</p>
+                <p><strong>Orders</strong> 委刊單、報價、資料形式、交付日期、是否已開發票。</p>
+                <p><strong>Invoices</strong> 發票金額、日期、狀態、未收款追蹤。</p>
+                <p><strong>Payments</strong> 入款日期、金額、方式與對應發票。</p>
+                <p><strong>Contracts</strong> 合約期間、客戶狀態、請款模式、年約價值。</p>
+                <p><strong>Activities</strong> 電話、Email、會議與下次追蹤日期。</p>
+              </div>
+            </section>
+
+            <section class="panel option-panel">
+              <div class="panel-head">
+                <h3>選單設定</h3>
+              </div>
+              <form id="optionsForm" class="form-grid single">
+                <label>Customers 付款條件<textarea id="optionPaymentTerms" rows="4"></textarea></label>
+                <label>Orders BD<textarea id="optionBd" rows="4"></textarea></label>
+                <label>Orders 銷售類別<textarea id="optionSalesType" rows="4"></textarea></label>
+                <label>Orders 產業<textarea id="optionIndustry" rows="4"></textarea></label>
+                <label>Invoices 狀態<textarea id="optionInvoiceStatus" rows="4"></textarea></label>
+                <label>Payments 方式<textarea id="optionPaymentMethod" rows="4"></textarea></label>
+                <label>Contracts 客戶狀態<textarea id="optionCustomerStatus" rows="4"></textarea></label>
+                <label>Contracts 請款模式<textarea id="optionBillingMode" rows="4"></textarea></label>
+                <div class="settings-actions">
+                  <button class="primary-btn" type="submit">儲存選單</button>
+                  <button class="secondary-btn" type="button" id="resetOptionsBtn">還原預設</button>
+                </div>
+              </form>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <dialog class="modal" id="customerModal">
+      <form method="dialog" class="modal-card" id="customerForm">
+        <header>
+          <h3>客戶資料</h3>
+          <button type="button" class="icon-btn" data-close>×</button>
+        </header>
+        <div class="form-grid">
+          <input type="hidden" name="id" />
+          <label>公司名稱<input name="name" required /></label>
+          <label>統一編號<input name="taxId" /></label>
+          <label>聯絡人<input name="contact" /></label>
+          <label>Email<input name="email" type="email" /></label>
+          <label>電話<input name="phone" /></label>
+          <label>付款條件<select name="paymentTerms" data-option-key="paymentTerms"></select></label>
+          <label class="full">地址<input name="address" /></label>
+          <label class="full">備註<textarea name="notes" rows="3"></textarea></label>
+        </div>
+        <footer>
+          <button type="button" class="secondary-btn" data-close>取消</button>
+          <button class="primary-btn" type="submit">儲存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="invoiceModal">
+      <form method="dialog" class="modal-card" id="invoiceForm">
+        <header>
+          <h3>發票資料</h3>
+          <button type="button" class="icon-btn" data-close>×</button>
+        </header>
+        <div class="form-grid">
+          <input type="hidden" name="id" />
+          <label>已收款<input name="paidDate" /></label>
+          <label>訂單編號<input name="orderNo" /></label>
+          <label>請款時程<input name="billingSchedule" /></label>
+          <label>發票開立<input name="issueDate" type="date" /></label>
+          <label>發票號碼<input name="invoiceNo" /></label>
+          <label>客戶<select name="customerId"></select></label>
+          <label>公司<input name="company" /></label>
+          <label>統編<input name="taxId" /></label>
+          <label>金額未稅<input name="subtotal" type="number" min="0" step="1" /></label>
+          <label>金額含稅<input name="totalWithTax" type="number" min="0" step="1" readonly /></label>
+          <label>購買商品<input name="product" /></label>
+          <label>收件人<input name="recipient" /></label>
+          <label>收件地址<input name="recipientAddress" /></label>
+          <label>Email<input name="email" type="email" /></label>
+          <label>電話<input name="phone" /></label>
+          <label>到期日<input name="dueDate" type="date" /></label>
+          <label>狀態<select name="status" data-option-key="invoiceStatus"></select></label>
+          <label class="full">備註<textarea name="notes" rows="3"></textarea></label>
+          <label class="full">說明<textarea name="description" rows="3"></textarea></label>
+        </div>
+        <footer>
+          <button type="button" class="secondary-btn" data-close>取消</button>
+          <button class="primary-btn" type="submit">儲存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="orderModal">
+      <form method="dialog" class="modal-card" id="orderForm">
+        <header>
+          <h3>委刊單資料</h3>
+          <button type="button" class="icon-btn" data-close>×</button>
+        </header>
+        <div class="form-grid">
+          <input type="hidden" name="id" />
+          <label>BD<select name="bd" data-option-key="bd"></select></label>
+          <label>銷售類別<select name="salesType" data-option-key="salesType"></select></label>
+          <label>產業<select name="industry" data-option-key="industry"></select></label>
+          <label>代理商<input name="agency" /></label>
+          <label>品牌客戶<input name="brandCustomer" required /></label>
+          <label>報價單日期<input name="quoteDate" type="date" /></label>
+          <label>報價金額未稅<input name="quoteAmount" type="number" min="0" step="1" /></label>
+          <label>資料形式<input name="dataFormat" placeholder="ADID" /></label>
+          <label>資料筆數<input name="dataCount" type="number" min="0" step="1" /></label>
+          <label>交付日期<input name="deliveryDate" type="date" /></label>
+          <label>已開發票<select name="invoiceIssued">
+            <option value="否">否</option>
+            <option value="是">是</option>
+          </select></label>
+          <label class="full">備註<textarea name="notes" rows="4"></textarea></label>
+        </div>
+        <footer>
+          <button type="button" class="secondary-btn" data-close>取消</button>
+          <button class="primary-btn" type="submit">儲存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="paymentModal">
+      <form method="dialog" class="modal-card" id="paymentForm">
+        <header>
+          <h3>入款紀錄</h3>
+          <button type="button" class="icon-btn" data-close>×</button>
+        </header>
+        <div class="form-grid">
+          <input type="hidden" name="id" />
+          <label>日期<input name="paidDate" type="date" required /></label>
+          <label>客戶<select name="customerId" required></select></label>
+          <label>對應發票<select name="invoiceId" required></select></label>
+          <label>金額<input name="amount" type="number" min="1" step="1" required /></label>
+          <label>方式<select name="method" data-option-key="paymentMethod"></select></label>
+          <label class="full">備註<textarea name="notes" rows="3"></textarea></label>
+        </div>
+        <footer>
+          <button type="button" class="secondary-btn" data-close>取消</button>
+          <button class="primary-btn" type="submit">儲存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="activityModal">
+      <form method="dialog" class="modal-card" id="activityForm">
+        <header>
+          <h3>互動紀錄</h3>
+          <button type="button" class="icon-btn" data-close>×</button>
+        </header>
+        <div class="form-grid">
+          <input type="hidden" name="id" />
+          <label>日期<input name="activityDate" type="date" required /></label>
+          <label>客戶<select name="customerId" required></select></label>
+          <label>類型<select name="type">
+            <option>電話</option>
+            <option>Email</option>
+            <option>會議</option>
+            <option>催款</option>
+            <option>其他</option>
+          </select></label>
+          <label>下次追蹤<input name="nextFollowUp" type="date" /></label>
+          <label class="full">內容<textarea name="content" rows="4" required></textarea></label>
+        </div>
+        <footer>
+          <button type="button" class="secondary-btn" data-close>取消</button>
+          <button class="primary-btn" type="submit">儲存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <dialog class="modal" id="contractModal">
+      <form method="dialog" class="modal-card" id="contractForm">
+        <header>
+          <h3>合約追蹤</h3>
+          <button type="button" class="icon-btn" data-close>×</button>
+        </header>
+        <div class="form-grid">
+          <input type="hidden" name="id" />
+          <label>類別<input name="category" /></label>
+          <label>公司名稱<input name="companyName" required /></label>
+          <label>接觸部門<input name="department" /></label>
+          <label>窗口職稱<input name="contactTitle" /></label>
+          <label>窗口姓名<input name="contactName" /></label>
+          <label>聯繫方式 TEL<input name="phone" /></label>
+          <label>主要聯繫方式<input name="primaryContact" placeholder="Line / Email / TEL" /></label>
+          <label>客戶狀態<select name="customerStatus" data-option-key="customerStatus"></select></label>
+          <label>合約類別<input name="contractType" /></label>
+          <label>合約起始日<input name="startDate" type="date" /></label>
+          <label>合約終止日<input name="endDate" /></label>
+          <label>合約價格含稅<input name="contractPrice" type="number" min="0" step="1" /></label>
+          <label>年約價值含稅<input name="annualValue" type="number" min="0" step="1" /></label>
+          <label>請款模式<select name="billingMode" data-option-key="billingMode"></select></label>
+          <label class="full">備註<textarea name="notes" rows="3"></textarea></label>
+        </div>
+        <footer>
+          <button type="button" class="secondary-btn" data-close>取消</button>
+          <button class="primary-btn" type="submit">儲存</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div class="toast" id="toast" role="status"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
