@@ -1,6 +1,6 @@
 const STORAGE_KEY = "finance-crm-state-v1";
 const CONFIG_KEY = "finance-crm-config-v1";
-const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzrfjwK6Fxh2HGbdXHa8xE0PZQ9HKXBfFzgKZBXZ48D6dQV-rWEgH_VySuLF1wHOS27/exec";
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyjWpHjHJh4omnc1-AyeRd90SFqaj_nZe5oDXREvJZAdRtT67XBCbFZfRE672wOM-zEGA/exec";
 const DEFAULT_SHEET_ID = "16vMvmefYvybqD5PfO2H94mHgie4Nfq0saUwQFHuLS0E";
 
 const defaultOptions = {
