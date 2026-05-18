@@ -5,7 +5,7 @@ function jsonResponse(payload) {
 const SHEETS = {
   customers: {
     name: "Customers",
-    headers: ["id", "name", "taxId", "contact", "email", "phone", "paymentTerms", "address", "notes", "updatedAt"],
+    headers: ["id", "bd", "name", "taxId", "contact", "email", "phone", "paymentTerms", "address", "notes", "updatedAt"],
   },
   orders: {
     name: "Orders",
@@ -30,6 +30,7 @@ const SHEETS = {
     name: "Invoices",
     headers: [
       "id",
+      "bd",
       "paidDate",
       "orderNo",
       "billingSchedule",
@@ -54,16 +55,17 @@ const SHEETS = {
   },
   payments: {
     name: "Payments",
-    headers: ["id", "paidDate", "customerId", "invoiceId", "amount", "method", "notes", "updatedAt"],
+    headers: ["id", "bd", "paidDate", "customerId", "invoiceId", "amount", "method", "notes", "updatedAt"],
   },
   activities: {
     name: "Activities",
-    headers: ["id", "activityDate", "customerId", "type", "content", "nextFollowUp", "updatedAt"],
+    headers: ["id", "bd", "activityDate", "customerId", "type", "content", "nextFollowUp", "updatedAt"],
   },
   contracts: {
     name: "Contracts",
     headers: [
       "id",
+      "bd",
       "category",
       "companyName",
       "department",
@@ -150,10 +152,28 @@ function ensureWorkbook(sheetId) {
         migrateOldInvoiceSheet(sheet, config.headers);
         return;
       }
-      sheet.getRange(1, 1, 1, config.headers.length).setValues([config.headers]);
-      sheet.setFrozenRows(1);
+      migrateSheetByHeaders(sheet, currentHeaders, config.headers);
     }
   });
+}
+
+function migrateSheetByHeaders(sheet, currentHeaders, newHeaders) {
+  const lastRow = sheet.getLastRow();
+  const rows = lastRow < 2 ? [] : sheet.getRange(2, 1, lastRow - 1, currentHeaders.length).getValues();
+  const migratedRows = rows
+    .filter((row) => row.some((cell) => cell !== ""))
+    .map((row) => {
+      const item = {};
+      currentHeaders.forEach((header, index) => {
+        if (header) item[header] = row[index];
+      });
+      return newHeaders.map((header) => item[header] === undefined ? "" : item[header]);
+    });
+
+  sheet.clearContents();
+  sheet.getRange(1, 1, 1, newHeaders.length).setValues([newHeaders]);
+  if (migratedRows.length) sheet.getRange(2, 1, migratedRows.length, newHeaders.length).setValues(migratedRows);
+  sheet.setFrozenRows(1);
 }
 
 function migrateOldInvoiceSheet(sheet, newHeaders) {
@@ -171,6 +191,7 @@ function migrateOldInvoiceSheet(sheet, newHeaders) {
       const tax = Number(oldItem.tax || 0);
       const migratedItem = {
         id: oldItem.id,
+        bd: "",
         paidDate: "",
         orderNo: "",
         billingSchedule: "",
@@ -292,6 +313,7 @@ function exportInvoices(sheetId) {
   }, {});
 
   const headers = [
+    "BD",
     "已收款",
     "訂單編號",
     "請款時程",
@@ -317,6 +339,7 @@ function exportInvoices(sheetId) {
     const subtotal = Number(invoice.subtotal || 0);
     const totalWithTax = Number(invoice.totalWithTax || 0) || calculateTaxIncluded(subtotal);
     return [
+      invoice.bd || customer.bd || "",
       paidDate,
       invoice.orderNo || "",
       invoice.billingSchedule || "",

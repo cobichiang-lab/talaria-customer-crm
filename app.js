@@ -1,5 +1,7 @@
 const STORAGE_KEY = "finance-crm-state-v1";
 const CONFIG_KEY = "finance-crm-config-v1";
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzrfjwK6Fxh2HGbdXHa8xE0PZQ9HKXBfFzgKZBXZ48D6dQV-rWEgH_VySuLF1wHOS27/exec";
+const DEFAULT_SHEET_ID = "16vMvmefYvybqD5PfO2H94mHgie4Nfq0saUwQFHuLS0E";
 
 const defaultOptions = {
   paymentTerms: ["現結", "月結 30 天", "月結 45 天", "月結 60 天"],
@@ -16,6 +18,7 @@ const sampleState = {
   customers: [
     {
       id: "cus_demo_1",
+      bd: "Maggie",
       name: "青禾設計有限公司",
       taxId: "24567891",
       contact: "林小姐",
@@ -27,6 +30,7 @@ const sampleState = {
     },
     {
       id: "cus_demo_2",
+      bd: "Peggy",
       name: "晨峰科技股份有限公司",
       taxId: "83214567",
       contact: "王先生",
@@ -72,6 +76,7 @@ const sampleState = {
   invoices: [
     {
       id: "inv_demo_1",
+      bd: "Maggie",
       invoiceNo: "AB-202605-001",
       customerId: "cus_demo_1",
       paidDate: "",
@@ -94,6 +99,7 @@ const sampleState = {
     },
     {
       id: "inv_demo_2",
+      bd: "Peggy",
       invoiceNo: "AB-202604-014",
       customerId: "cus_demo_2",
       paidDate: "",
@@ -118,6 +124,7 @@ const sampleState = {
   payments: [
     {
       id: "pay_demo_1",
+      bd: "Maggie",
       paidDate: "2026-05-05",
       customerId: "cus_demo_1",
       invoiceId: "inv_demo_1",
@@ -129,6 +136,7 @@ const sampleState = {
   activities: [
     {
       id: "act_demo_1",
+      bd: "Peggy",
       activityDate: "2026-05-04",
       customerId: "cus_demo_2",
       type: "催款",
@@ -137,6 +145,7 @@ const sampleState = {
     },
     {
       id: "act_demo_2",
+      bd: "Maggie",
       activityDate: "2026-05-03",
       customerId: "cus_demo_1",
       type: "Email",
@@ -147,6 +156,7 @@ const sampleState = {
   contracts: [
     {
       id: "con_demo_1",
+      bd: "Cobi",
       category: "數據公司",
       companyName: "Vpon",
       department: "",
@@ -206,10 +216,14 @@ function loadLocalState() {
 }
 
 function loadConfig() {
+  const defaults = {
+    scriptUrl: DEFAULT_SCRIPT_URL,
+    sheetId: DEFAULT_SHEET_ID,
+  };
   try {
-    return JSON.parse(localStorage.getItem(CONFIG_KEY) || "{}");
+    return { ...defaults, ...JSON.parse(localStorage.getItem(CONFIG_KEY) || "{}") };
   } catch {
-    return {};
+    return defaults;
   }
 }
 
@@ -314,7 +328,12 @@ function bindForms() {
     closeModal(event.target);
   });
 
-  $("#paymentForm").elements.customerId.addEventListener("change", fillSelects);
+  $("#paymentForm").elements.customerId.addEventListener("change", (event) => {
+    fillBdFromCustomer($("#paymentForm"), event.target.value);
+    fillSelects();
+  });
+  $("#paymentForm").elements.invoiceId.addEventListener("change", (event) => fillBdFromInvoice($("#paymentForm"), event.target.value));
+  $("#activityForm").elements.customerId.addEventListener("change", (event) => fillBdFromCustomer($("#activityForm"), event.target.value));
   $("#invoiceForm").elements.customerId.addEventListener("change", (event) => fillInvoiceCustomerFields(event.target.value));
   $("#invoiceForm").elements.subtotal.addEventListener("input", updateInvoiceTotal);
 }
@@ -489,24 +508,28 @@ async function callSheet(action, payload) {
 
 function normalizeState(nextState) {
   return {
-    customers: nextState.customers || [],
+    customers: (nextState.customers || []).map((item) => ({ ...item, bd: item.bd || "" })),
     orders: (nextState.orders || []).map((item) => ({
       ...item,
+      bd: item.bd || "",
       quoteAmount: Number(item.quoteAmount || 0),
       dataCount: Number(item.dataCount || 0),
     })),
     invoices: (nextState.invoices || []).map((item) => ({
       ...item,
+      bd: item.bd || customerBd(item.customerId, nextState.customers || []),
       subtotal: Number(item.subtotal || 0),
       totalWithTax: Number(item.totalWithTax || 0),
     })),
     payments: (nextState.payments || []).map((item) => ({
       ...item,
+      bd: item.bd || customerBd(item.customerId, nextState.customers || []),
       amount: Number(item.amount || 0),
     })),
-    activities: nextState.activities || [],
+    activities: (nextState.activities || []).map((item) => ({ ...item, bd: item.bd || customerBd(item.customerId, nextState.customers || []) })),
     contracts: (nextState.contracts || []).map((item) => ({
       ...item,
+      bd: item.bd || "",
       contractPrice: Number(item.contractPrice || 0),
       annualValue: Number(item.annualValue || 0),
     })),
@@ -575,7 +598,7 @@ function renderDashboard() {
 }
 
 function renderCustomers() {
-  const customers = state.customers.filter((customer) => matchesSearch(customer, [customer.name, customer.taxId, customer.contact, customer.email]));
+  const customers = state.customers.filter((customer) => matchesSearch(customer, [customer.bd, customer.name, customer.taxId, customer.contact, customer.email]));
   $("#customerCards").innerHTML = customers.length
     ? customers
         .map((customer) => {
@@ -586,6 +609,7 @@ function renderCustomers() {
             <article class="customer-card">
               <h3>${escapeHtml(customer.name)}</h3>
               <div class="customer-meta">
+                <span>BD：${escapeHtml(customer.bd || "-")}</span>
                 <span>統編：${escapeHtml(customer.taxId || "-")}</span>
                 <span>聯絡人：${escapeHtml(customer.contact || "-")}</span>
                 <span>Email：${escapeHtml(customer.email || "-")}</span>
@@ -655,13 +679,14 @@ function renderOrders() {
 
 function renderInvoices() {
   const invoices = getInvoiceRows().filter((invoice) =>
-    matchesSearch(invoice, [invoice.invoiceNo, invoice.customerName, invoice.company, invoice.taxId, invoice.orderNo, invoice.product, invoice.status, invoice.notes]),
+    matchesSearch(invoice, [invoice.bd, invoice.invoiceNo, invoice.customerName, invoice.company, invoice.taxId, invoice.orderNo, invoice.product, invoice.status, invoice.notes]),
   );
   $("#invoiceRows").innerHTML = invoices.length
     ? invoices
         .map(
           (invoice) => `
             <tr>
+              <td>${escapeHtml(invoice.bd || "-")}</td>
               <td>${dateText(invoice.paidDate)}</td>
               <td>${escapeHtml(invoice.orderNo || "-")}</td>
               <td>${escapeHtml(invoice.billingSchedule || "-")}</td>
@@ -683,7 +708,7 @@ function renderInvoices() {
           `,
         )
         .join("")
-    : emptyRow(12, "沒有符合條件的發票");
+    : emptyRow(13, "沒有符合條件的發票");
 
   $$("[data-edit-invoice]").forEach((button) => {
     button.addEventListener("click", () => editRecord("invoiceModal", "invoiceForm", state.invoices.find((item) => item.id === button.dataset.editInvoice)));
@@ -695,7 +720,7 @@ function renderInvoices() {
 
 function renderPayments() {
   const payments = state.payments
-    .filter((payment) => matchesSearch(payment, [customerName(payment.customerId), invoiceNo(payment.invoiceId), payment.method, payment.notes]))
+    .filter((payment) => matchesSearch(payment, [payment.bd, customerName(payment.customerId), invoiceNo(payment.invoiceId), payment.method, payment.notes]))
     .sort((a, b) => b.paidDate.localeCompare(a.paidDate));
 
   $("#paymentRows").innerHTML = payments.length
@@ -704,6 +729,7 @@ function renderPayments() {
           (payment) => `
             <tr>
               <td>${dateText(payment.paidDate)}</td>
+              <td>${escapeHtml(payment.bd || "-")}</td>
               <td>${escapeHtml(customerName(payment.customerId))}</td>
               <td>${escapeHtml(invoiceNo(payment.invoiceId))}</td>
               <td>${money(payment.amount)}</td>
@@ -719,7 +745,7 @@ function renderPayments() {
           `,
         )
         .join("")
-    : emptyRow(7, "沒有符合條件的入款");
+    : emptyRow(8, "沒有符合條件的入款");
 
   $$("[data-edit-payment]").forEach((button) => {
     button.addEventListener("click", () => editRecord("paymentModal", "paymentForm", state.payments.find((item) => item.id === button.dataset.editPayment)));
@@ -734,6 +760,7 @@ function renderContracts() {
     .filter((contract) =>
       matchesSearch(contract, [
         contract.category,
+        contract.bd,
         contract.companyName,
         contract.contactName,
         contract.primaryContact,
@@ -751,6 +778,7 @@ function renderContracts() {
           (contract) => `
             <tr>
               <td>${escapeHtml(contract.category || "-")}</td>
+              <td>${escapeHtml(contract.bd || "-")}</td>
               <td>${escapeHtml(contract.companyName)}</td>
               <td>${escapeHtml(contract.contactName || "-")}</td>
               <td>${escapeHtml(contract.primaryContact || "-")}</td>
@@ -770,7 +798,7 @@ function renderContracts() {
           `,
         )
         .join("")
-    : emptyRow(11, "沒有符合條件的合約");
+    : emptyRow(12, "沒有符合條件的合約");
 
   $$("[data-edit-contract]").forEach((button) => {
     button.addEventListener("click", () =>
@@ -784,7 +812,7 @@ function renderContracts() {
 
 function renderActivities() {
   const activities = state.activities
-    .filter((activity) => matchesSearch(activity, [customerName(activity.customerId), activity.type, activity.content]))
+    .filter((activity) => matchesSearch(activity, [activity.bd, customerName(activity.customerId), activity.type, activity.content]))
     .sort((a, b) => b.activityDate.localeCompare(a.activityDate));
 
   $("#activityRows").innerHTML = activities.length
@@ -793,6 +821,7 @@ function renderActivities() {
           (activity) => `
             <tr>
               <td>${dateText(activity.activityDate)}</td>
+              <td>${escapeHtml(activity.bd || "-")}</td>
               <td>${escapeHtml(customerName(activity.customerId))}</td>
               <td>${escapeHtml(activity.type)}</td>
               <td>${escapeHtml(activity.content)}</td>
@@ -807,7 +836,7 @@ function renderActivities() {
           `,
         )
         .join("")
-    : emptyRow(6, "沒有符合條件的互動紀錄");
+    : emptyRow(7, "沒有符合條件的互動紀錄");
 
   $$("[data-edit-activity]").forEach((button) => {
     button.addEventListener("click", () => editRecord("activityModal", "activityForm", state.activities.find((item) => item.id === button.dataset.editActivity)));
@@ -925,6 +954,7 @@ function fillInvoiceCustomerFields(customerId) {
   const form = $("#invoiceForm");
   const customer = state.customers.find((item) => item.id === customerId);
   if (!customer) return;
+  if (!form.elements.bd.value) form.elements.bd.value = customer.bd || "";
   if (!form.elements.company.value) form.elements.company.value = customer.name || "";
   if (!form.elements.taxId.value) form.elements.taxId.value = customer.taxId || "";
   if (!form.elements.recipient.value) form.elements.recipient.value = customer.contact || "";
@@ -932,6 +962,17 @@ function fillInvoiceCustomerFields(customerId) {
   if (!form.elements.email.value) form.elements.email.value = customer.email || "";
   if (!form.elements.phone.value) form.elements.phone.value = customer.phone || "";
   if (!form.elements.billingSchedule.value) form.elements.billingSchedule.value = customer.paymentTerms || "";
+}
+
+function fillBdFromCustomer(form, customerId) {
+  const bd = customerBd(customerId);
+  if (form?.elements?.bd && bd && !form.elements.bd.value) form.elements.bd.value = bd;
+}
+
+function fillBdFromInvoice(form, invoiceId) {
+  const invoice = getInvoiceRows().find((item) => item.id === invoiceId);
+  const bd = invoice?.bd || customerBd(invoice?.customerId);
+  if (form?.elements?.bd && bd && !form.elements.bd.value) form.elements.bd.value = bd;
 }
 
 function updateInvoiceTotal() {
@@ -968,6 +1009,7 @@ function getInvoiceRows() {
     const balance = Math.max(total - paid, 0);
     return {
       ...invoice,
+      bd: invoice.bd || customerBd(invoice.customerId),
       customerName: customerName(invoice.customerId),
       company: invoice.company || customerName(invoice.customerId),
       total,
@@ -1000,6 +1042,10 @@ function getMonthPaid() {
 
 function customerName(id) {
   return state.customers.find((customer) => customer.id === id)?.name || "未指定客戶";
+}
+
+function customerBd(id, customers = state.customers) {
+  return customers.find((customer) => customer.id === id)?.bd || "";
 }
 
 function invoiceNo(id) {

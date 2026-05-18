@@ -155,6 +155,7 @@
               <table>
                 <thead>
                   <tr>
+                    <th>BD</th>
                     <th>已收款</th>
                     <th>訂單編號</th>
                     <th>請款時程</th>
@@ -185,6 +186,7 @@
                 <thead>
                   <tr>
                     <th>日期</th>
+                    <th>BD</th>
                     <th>客戶</th>
                     <th>對應發票</th>
                     <th>金額</th>
@@ -209,6 +211,7 @@
                 <thead>
                   <tr>
                     <th>類別</th>
+                    <th>BD</th>
                     <th>公司名稱</th>
                     <th>窗口</th>
                     <th>主要聯繫</th>
@@ -237,6 +240,7 @@
                 <thead>
                   <tr>
                     <th>日期</th>
+                    <th>BD</th>
                     <th>客戶</th>
                     <th>類型</th>
                     <th>內容</th>
@@ -277,12 +281,12 @@
                 <h3>工作表結構</h3>
               </div>
               <div class="schema-list">
-                <p><strong>Customers</strong> 客戶基本資料、統編、聯絡資訊、付款條件。</p>
-                <p><strong>Orders</strong> 委刊單、報價、資料形式、交付日期、是否已開發票。</p>
-                <p><strong>Invoices</strong> 發票金額、日期、狀態、未收款追蹤。</p>
-                <p><strong>Payments</strong> 入款日期、金額、方式與對應發票。</p>
-                <p><strong>Contracts</strong> 合約期間、客戶狀態、請款模式、年約價值。</p>
-                <p><strong>Activities</strong> 電話、Email、會議與下次追蹤日期。</p>
+                <p><strong>Customers</strong> BD、客戶基本資料、統編、聯絡資訊、付款條件。</p>
+                <p><strong>Orders</strong> BD、委刊單、報價、資料形式、交付日期、是否已開發票。</p>
+                <p><strong>Invoices</strong> BD、發票金額、日期、狀態、未收款追蹤。</p>
+                <p><strong>Payments</strong> BD、入款日期、金額、方式與對應發票。</p>
+                <p><strong>Contracts</strong> BD、合約期間、客戶狀態、請款模式、年約價值。</p>
+                <p><strong>Activities</strong> BD、電話、Email、會議與下次追蹤日期。</p>
               </div>
             </section>
 
@@ -318,6 +322,7 @@
         </header>
         <div class="form-grid">
           <input type="hidden" name="id" />
+          <label>BD<select name="bd" data-option-key="bd"></select></label>
           <label>公司名稱<input name="name" required /></label>
           <label>統一編號<input name="taxId" /></label>
           <label>聯絡人<input name="contact" /></label>
@@ -342,6 +347,7 @@
         </header>
         <div class="form-grid">
           <input type="hidden" name="id" />
+          <label>BD<select name="bd" data-option-key="bd"></select></label>
           <label>已收款<input name="paidDate" /></label>
           <label>訂單編號<input name="orderNo" /></label>
           <label>請款時程<input name="billingSchedule" /></label>
@@ -408,6 +414,7 @@
         </header>
         <div class="form-grid">
           <input type="hidden" name="id" />
+          <label>BD<select name="bd" data-option-key="bd"></select></label>
           <label>日期<input name="paidDate" type="date" required /></label>
           <label>客戶<select name="customerId" required></select></label>
           <label>對應發票<select name="invoiceId" required></select></label>
@@ -430,6 +437,7 @@
         </header>
         <div class="form-grid">
           <input type="hidden" name="id" />
+          <label>BD<select name="bd" data-option-key="bd"></select></label>
           <label>日期<input name="activityDate" type="date" required /></label>
           <label>客戶<select name="customerId" required></select></label>
           <label>類型<select name="type">
@@ -457,6 +465,7 @@
         </header>
         <div class="form-grid">
           <input type="hidden" name="id" />
+          <label>BD<select name="bd" data-option-key="bd"></select></label>
           <label>類別<input name="category" /></label>
           <label>公司名稱<input name="companyName" required /></label>
           <label>接觸部門<input name="department" /></label>
